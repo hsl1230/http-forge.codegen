@@ -229,16 +229,51 @@ function generateResponseInterfaces(responseSchema: any, name: string): string {
 }
 
 /**
+ * Get the primary (success) response type name from a response schema.
+ * Prefers 200, then 201, then the lowest 2xx, then 'default'.
+ */
+function getPrimaryResponseTypeName(responseSchema: any, name: string): string | undefined {
+    if (!responseSchema?.responses) return undefined;
+
+    const codes = Object.keys(responseSchema.responses);
+    // Priority: 200 > 201 > lowest 2xx > default
+    const pick = ['200', '201'].find(c => codes.includes(c))
+        ?? codes.filter(c => /^2\d{2}$/.test(c)).sort()[0]
+        ?? (codes.includes('default') ? 'default' : undefined);
+
+    if (!pick) return undefined;
+
+    const rd = responseSchema.responses[pick];
+    const schema = rd.content
+        ? rd.content[Object.keys(rd.content)[0]]?.schema
+        : rd.schema;
+    if (!schema) return undefined;
+
+    const statusName = pick === 'default' ? 'Default' : pick;
+    return `${name}Response${statusName}`;
+}
+
+/**
+ * Result of extracting a TypeScript type from a URL constraint
+ */
+interface ConstraintType {
+    /** TypeScript type string */
+    type: string;
+    /** Original regex pattern (set when the constraint is a regex, not a literal) */
+    pattern?: string;
+}
+
+/**
  * Extract TypeScript type from regex constraint
  * Examples:
- *   "RECORDING|VOD|PROGRAM" -> "'RECORDING' | 'VOD' | 'PROGRAM'"
- *   "TELUS" -> "'TELUS'"
- *   Complex regex -> "string"
- *   No constraint -> "any"
+ *   "RECORDING|VOD|PROGRAM" -> { type: "'RECORDING' | 'VOD' | 'PROGRAM'" }
+ *   "TELUS" -> { type: "'TELUS'" }
+ *   "T7.[0-9]" -> { type: "string", pattern: "T7.[0-9]" }
+ *   No constraint -> { type: "any" }
  */
-function extractTypeFromConstraint(constraint?: string): string {
+function extractTypeFromConstraint(constraint?: string): ConstraintType {
     if (!constraint) {
-        return 'any';
+        return { type: 'any' };
     }
     
     // Check if it's a simple alternation of literal values (A|B|C)
@@ -247,11 +282,11 @@ function extractTypeFromConstraint(constraint?: string): string {
     
     if (isSimpleAlternation) {
         // Convert to TypeScript union type
-        return literals.map(lit => `'${lit.trim()}'`).join(' | ');
+        return { type: literals.map(lit => `'${lit.trim()}'`).join(' | ') };
     }
     
-    // For complex regex patterns, fallback to string
-    return 'string';
+    // For complex regex patterns, fallback to string with pattern metadata
+    return { type: 'string', pattern: constraint };
 }
 
 /**
@@ -543,15 +578,17 @@ function generatePathParamsInterface(pathParams: PathParam[], name: string): str
     lines.push(`export interface ${name}PathParams {`);
     
     for (const param of pathParams) {
-        lines.push(`    /** Path parameter: ${param.name} */`);
         // Use quotes for numeric or invalid identifiers
         const isValidIdentifier = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(param.name);
         const paramKey = isValidIdentifier ? param.name : `'${param.name}'`;
         
         // Extract TypeScript type from constraint
-        const paramType = extractTypeFromConstraint(param.constraint);
+        const { type: paramType, pattern } = extractTypeFromConstraint(param.constraint);
         const optionalMarker = param.optional ? '?' : '';
         
+        const jsdocParts: string[] = [`Path parameter: ${param.name}`];
+        if (pattern) jsdocParts.push(`@pattern ${pattern}`);
+        lines.push(`    /** ${jsdocParts.join(' — ')} */`);
         lines.push(`    ${paramKey}${optionalMarker}: ${paramType};`);
     }
     
@@ -588,9 +625,12 @@ function generateTypedPathParamsInterface(pathParams: PathParam[], typedParams: 
             const optionalMarker = param.optional ? '?' : '';
             lines.push(`    ${paramKey}${optionalMarker}: ${paramType};`);
         } else {
-            lines.push(`    /** Path parameter: ${param.name} */`);
-            const paramType = extractTypeFromConstraint(param.constraint);
+            const { type: paramType, pattern } = extractTypeFromConstraint(param.constraint);
             const optionalMarker = param.optional ? '?' : '';
+            
+            const jsdocParts: string[] = [`Path parameter: ${param.name}`];
+            if (pattern) jsdocParts.push(`@pattern ${pattern}`);
+            lines.push(`    /** ${jsdocParts.join(' — ')} */`);
             lines.push(`    ${paramKey}${optionalMarker}: ${paramType};`);
         }
     }
@@ -729,11 +769,21 @@ function generateRequestFile(request: RequestInfo, collectionName: string): stri
     }
     
     // Generate response interfaces from response.schema.json if available
+    let primaryResponseType: string | undefined;
     if (request.responseSchema) {
         const responseTypes = generateResponseInterfaces(request.responseSchema, typeName);
         if (responseTypes) {
             lines.push(responseTypes);
         }
+        primaryResponseType = getPrimaryResponseTypeName(request.responseSchema, typeName);
+    }
+
+    // Generate typed response wrapper when response schema is available
+    if (primaryResponseType) {
+        lines.push(`export interface ${typeName}TypedResponse extends APIResponse {`);
+        lines.push(`    json(): Promise<${primaryResponseType}>;`);
+        lines.push('}');
+        lines.push('');
     }
     
     // Generate options interface
@@ -767,7 +817,8 @@ function generateRequestFile(request: RequestInfo, collectionName: string): stri
     lines.push(` * const response = await ${funcName}({ request, env });`);
     lines.push(' * ```');
     lines.push(' */');
-    lines.push(`export async function ${funcName}(options: ${typeName}Options): Promise<APIResponse> {`);
+    const returnType = primaryResponseType ? `${typeName}TypedResponse` : 'APIResponse';
+    lines.push(`export async function ${funcName}(options: ${typeName}Options): Promise<${returnType}> {`);
     lines.push('    const { request, env } = options;');
     lines.push('    ');
     
