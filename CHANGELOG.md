@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.5] - 2026-04-07
+
+### Fixed
+- **Regex detection in typed param enums** — `typedParamToTS` now checks enum values for regex metacharacters (`. [ ] * + ? \ ^ $ { } ( )`). Enum values like `T7.[0-9]` are no longer emitted as string literal types; instead the parameter falls back to `string`. Only plain alphanumeric enum values (e.g., `VOD`, `PROGRAM`) produce union literal types.
+
 ## [0.1.4] - 2026-04-07
 
 ### Added

@@ -176,7 +176,11 @@ function generateInterfaceFromSchema(schema: any, name: string, components?: Rec
  */
 function typedParamToTS(param: TypedParam): string {
     if (param.enum && param.enum.length > 0) {
-        return param.enum.map(v => `'${v}'`).join(' | ');
+        // If any enum value contains regex metacharacters, treat as string (not literal)
+        const hasRegex = param.enum.some(v => /[.\[\]*+?\\^${}()]/.test(v));
+        if (!hasRegex) {
+            return param.enum.map(v => `'${v}'`).join(' | ');
+        }
     }
     switch (param.type) {
         case 'integer':

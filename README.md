@@ -235,7 +235,7 @@ export async function getUser(options: GetUserOptions): Promise<GetUserTypedResp
 
 ### Path parameter constraints
 
-Path params extracted from URL patterns like `:name(constraint)?` are turned into TypeScript types:
+Path params extracted from URL patterns like `:name(constraint)?` are turned into TypeScript types. Regex detection applies both to URL constraints **and** `enum` values in typed path param metadata — any value containing regex metacharacters (`. [ ] * + ? \ ^ $ { } ( )`) maps to `string` instead of a literal type.
 
 | URL pattern | Constraint | Generated type |
 |-------------|-----------|----------------|
@@ -244,6 +244,8 @@ Path params extracted from URL patterns like `:name(constraint)?` are turned int
 | `:appversion(T7.[0-9])` | `T7.[0-9]` | `string` (with `@pattern` JSDoc) |
 | `:userId` | none | `any` |
 | `:sessionId?` | none | `any` (optional) |
+
+When typed path params provide an `enum` array (e.g., `"enum": ["T7.[0-9]"]`), the same regex detection applies — regex-like values produce `string`, while plain values like `["VOD", "PROGRAM"]` produce `'VOD' | 'PROGRAM'`.
 
 ### Body type support
 
