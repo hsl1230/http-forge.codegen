@@ -623,9 +623,16 @@ function generateTypedPathParamsInterface(pathParams: PathParam[], typedParams: 
             if (typed.format) jsdocParts.push(`@format ${typed.format}`);
             if (typed.deprecated) jsdocParts.push(`@deprecated`);
             
+            const paramType = typedParamToTS(typed);
+            // When enum values contain regex metacharacters, typedParamToTS falls back to 'string'.
+            // Add @pattern from the URL constraint or the regex enum value.
+            if (paramType === 'string' && typed.enum && typed.enum.some(v => /[.\[\]*+?\\^${}()]/.test(v))) {
+                const pattern = param.constraint || typed.enum.join('|');
+                jsdocParts.push(`@pattern ${pattern}`);
+            }
+            
             lines.push(`    /** ${jsdocParts.join(' — ')} */`);
             
-            const paramType = typedParamToTS(typed);
             const optionalMarker = param.optional ? '?' : '';
             lines.push(`    ${paramKey}${optionalMarker}: ${paramType};`);
         } else {

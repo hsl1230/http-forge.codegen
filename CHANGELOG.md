@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.6] - 2026-04-07
+
+### Fixed
+- **`@pattern` JSDoc for typed path params** — when typed path param enum values contain regex metacharacters, the generated JSDoc now includes `@pattern` with the constraint from the URL (or joined enum values as fallback). Previously `@pattern` was only emitted in the non-typed code path.
+
 ## [0.1.5] - 2026-04-07
 
 ### Fixed
