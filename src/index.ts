@@ -32,4 +32,5 @@ export {
     type SingleRequestOptions
 } from './generator';
 export { parseCollection, parseRequest, type CollectionInfo, type RequestInfo, type TypedParam } from './parser';
+export { generateSnippet, SUPPORTED_LANGUAGES, type SnippetLanguage } from './snippet-generator';
 

@@ -17,6 +17,8 @@
 import { Command } from 'commander';
 import * as path from 'path';
 import { generateClients, generateCollection, generateSingleRequest } from './generator';
+import { parseRequest } from './parser';
+import { generateSnippet, SUPPORTED_LANGUAGES, type SnippetLanguage } from './snippet-generator';
 
 // Force stdout to be unbuffered for npm compatibility
 if (process.stdout.isTTY === false) {
@@ -77,5 +79,42 @@ program
             process.exit(1);
         }
     });
+
+// ── Snippet subcommand ────────────────────────────────────────────────────────
+
+const snippetCmd = new Command('snippet')
+    .description('Generate a copy-paste code snippet from a single request')
+    .requiredOption('-i, --input <path>', 'Path to the request.json file or its parent folder')
+    .requiredOption('-l, --lang <lang>', `Target language: ${SUPPORTED_LANGUAGES.join(', ')}`)
+    .option('-c, --collection <path>', 'Root collection directory (used to resolve relative request path)')
+    .action((options) => {
+        const lang = options.lang as SnippetLanguage;
+        if (!SUPPORTED_LANGUAGES.includes(lang)) {
+            console.error(`Unknown language "${lang}". Supported: ${SUPPORTED_LANGUAGES.join(', ')}`);
+            process.exit(1);
+        }
+
+        // Accept either a request.json path or the containing directory
+        let requestJsonPath = path.resolve(process.cwd(), options.input);
+        const fs = require('fs') as typeof import('fs');
+        if (fs.statSync(requestJsonPath).isDirectory()) {
+            requestJsonPath = path.join(requestJsonPath, 'request.json');
+        }
+
+        const collectionPath = options.collection
+            ? path.resolve(process.cwd(), options.collection)
+            : path.dirname(path.dirname(requestJsonPath)); // heuristic: two levels up
+
+        const req = parseRequest(requestJsonPath, collectionPath);
+        if (!req) {
+            console.error(`Failed to parse request at ${requestJsonPath}`);
+            process.exit(1);
+        }
+
+        const snippet = generateSnippet(req, lang);
+        process.stdout.write(snippet + '\n');
+    });
+
+program.addCommand(snippetCmd);
 
 program.parse();
