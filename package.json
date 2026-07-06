@@ -1,6 +1,6 @@
 {
   "name": "@http-forge/codegen",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "HTTP Forge Code Generator - Generate typed API clients from collections",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -28,11 +28,28 @@
     "clean": "rimraf dist"
   },
   "keywords": [
+    "http-forge",
+    "http forge",
     "http",
     "api",
+    "testing",
+    "api testing",
+    "postman",
+    "postman alternative",
+    "openapi",
+    "graphql",
+    "automation",
+    "ci",
+    "mcp",
     "codegen",
     "typescript",
-    "generator"
+    "generator",
+    "api client",
+    "api client generator",
+    "playwright",
+    "schema-first",
+    "json schema",
+    "client generation"
   ],
   "author": "",
   "license": "MIT",

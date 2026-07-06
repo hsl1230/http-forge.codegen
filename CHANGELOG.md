@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.7 - 2026-07-06
+
+### Changed
+- **Legacy command deprecation notice** — `http-forge-codegen` now prints a clear migration notice recommending `http-forge generate` via `@http-forge/cli`.
+- **README simplified for landing-page clarity** — main README now stays concise and points deeper details/migration to guide docs.
+- **Guide docs expanded** — `docs/codegen-guide.md` now includes explicit `http-forge generate` usage and migration mapping from `http-forge-codegen`.
+- **Keyword metadata alignment** — package keywords were synced with shared HTTP Forge family discovery terms while keeping codegen-specific terms.
+
 ## [0.1.6] - 2026-04-07
 
 ### Fixed

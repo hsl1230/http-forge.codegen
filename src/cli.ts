@@ -27,6 +27,17 @@ if (process.stdout.isTTY === false) {
 
 const program = new Command();
 
+const LEGACY_NOTICE =
+    'Notice: "http-forge-codegen" is a legacy command alias. Prefer "http-forge generate" via @http-forge/cli for the unified HTTP Forge CLI experience.';
+
+let printedLegacyNotice = false;
+
+function printLegacyNotice(): void {
+    if (printedLegacyNotice) return;
+    printedLegacyNotice = true;
+    console.error(`[DEPRECATED] ${LEGACY_NOTICE}`);
+}
+
 program
     .name('http-forge-codegen')
     .description('Generate typed TypeScript API clients from HTTP Forge collections')
@@ -39,6 +50,7 @@ program
     .option('--types-only', 'Generate only type definitions', false)
     .option('--no-barrel', 'Skip barrel (index.ts) file generation', false)
     .action(async (options) => {
+        printLegacyNotice();
         try {
             const inputPath = path.resolve(process.cwd(), options.input);
             const outputPath = path.resolve(process.cwd(), options.output);
@@ -79,6 +91,8 @@ program
             process.exit(1);
         }
     });
+
+program.addHelpText('beforeAll', `${LEGACY_NOTICE}\n\n`);
 
 // ── Snippet subcommand ────────────────────────────────────────────────────────
 

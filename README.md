@@ -1,285 +1,106 @@
 # @http-forge/codegen
 
-Generate typed TypeScript API clients from HTTP Forge collections.
+[![npm version](https://img.shields.io/npm/v/%40http-forge%2Fcodegen)](https://www.npmjs.com/package/@http-forge/codegen)
+[![npm downloads](https://img.shields.io/npm/dm/%40http-forge%2Fcodegen)](https://www.npmjs.com/package/@http-forge/codegen)
+[![license](https://img.shields.io/npm/l/%40http-forge%2Fcodegen)](LICENSE)
+[![node](https://img.shields.io/node/v/%40http-forge%2Fcodegen)](https://www.npmjs.com/package/@http-forge/codegen)
 
-## Features
+**Generate typed TypeScript API clients from HTTP Forge collections.**
 
-- 🔧 CLI tool for generating TypeScript clients from HTTP Forge collections
-- 📝 Type-safe interfaces for headers, query params, path params, and request bodies
-- 📐 **Schema-first generation** — uses `body.schema.json` and `response.schema.json` when available
-- 🏷️ **Typed response wrappers** — generates `TypedAPIResponse` with `json(): Promise<ResponseType>` from response schemas
-- 🔤 **Typed parameters** — rich metadata (type, required, enum, format, description, deprecated) for headers, query, and path params
-- 🔗 **Path param constraint detection** — enum constraints become union types, regex patterns become `string` with `@pattern` JSDoc
-- 🔄 `{{variable}}` resolution in generated request payloads
-- 📦 Barrel export generation with recursive `index.ts` files
-- 🎯 Generate all collections, a single collection, or a single request
-- ⚙️ Optional type-only generation for schema-first workflows
-- 📋 Supports JSON, form-urlencoded, form-data (with file uploads), GraphQL, binary, and raw text body types
+Turn your HTTP Forge workspace requests into fully-typed, Playwright-ready API client functions — with schema-first types, path param constraints, and barrel exports.
+
+## Who It Is For
+
+- Teams who author requests in HTTP Forge and want typed Playwright tests.
+- TypeScript developers who want contract-safe API client code without manual boilerplate.
+- QA engineers who want to automate API tests generated directly from live request definitions.
+- CI/CD pipelines that auto-regenerate clients when the API changes.
+
+## Why @http-forge/codegen
+
+- Go from collection → typed Playwright client in one command.
+- Schema-first generation from `body.schema.json` and `response.schema.json`.
+- Path param constraints become union types or `string` with `@pattern` JSDoc.
+- Works alongside `@http-forge/playwright` runtime — generated clients depend on it.
+- Generate all, one collection, or one request.
+
+## How It Fits In The HTTP Forge Family
+
+| Component | Role |
+|---|---|
+| HTTP Forge VS Code extension | Build and validate requests/collections in workspace |
+| `@http-forge/core` | Shared execution and Postman-compatible runtime behavior |
+| `@http-forge/codegen` | Generates typed TypeScript API client functions from your workspace |
+| `@http-forge/playwright` | Runtime + shared types used by generated Playwright clients |
+| HTTP Forge CLI | Headless collection/suite runs and reporting for CI/CD |
+
+`@http-forge/codegen` is the bridge between your HTTP Forge workspace and your Playwright test code. Generated clients import from `@http-forge/playwright` and work directly with the Playwright test runner.
+
+## 1-Minute Quickstart
+
+```bash
+# 1) Install standalone codegen
+npm install @http-forge/codegen
+
+# 2) Generate all collections
+npx http-forge-codegen --input ./collections --output ./api-clients
+
+# Optional: one-command family workflow via CLI
+# npm install --global @http-forge/cli
+# http-forge generate --input ./collections --output ./api-clients
+
+# 3) Use in Playwright tests
+```
+
+```ts
+import { test, expect } from '@playwright/test';
+import { ForgeEnv } from '@http-forge/playwright';
+import { getUser } from './api-clients/user-api/get-user';
+
+test('get user', async ({ request }) => {
+    const env = ForgeEnv.create({ baseUrl: 'https://api.example.com' });
+    const res = await getUser({ request, env, params: { userId: '123' } });
+    expect(res.ok()).toBeTruthy();
+});
+```
+
+## Core Commands
+
+| Command | Purpose |
+|---|---|
+| `--input / -i` | Path to HTTP Forge collections folder |
+| `--output / -o` | Output path for generated clients |
+| `-c, --collection` | Generate a single collection only |
+| `-r, --request` | Generate a single request only |
+| `--overwrite` | Overwrite existing generated files |
+| `--types-only` | Emit type definitions only, no runtime functions |
+| `--no-barrel` | Skip `index.ts` barrel file generation |
 
 ## Installation
 
 ```bash
+# Standalone package
 npm install @http-forge/codegen
+
+# Optional: use via HTTP Forge CLI (single global entry point)
+npm install --global @http-forge/cli
 ```
 
-## Quick Start
+### Use Through HTTP Forge CLI
 
-### CLI usage
+If you prefer one global tool entry point, run code generation through CLI:
 
 ```bash
-# Generate all collections
-npx http-forge-codegen --input ./collections --output ./api-clients
-
-# Generate a single collection
-npx http-forge-codegen -i ./collections -o ./api-clients -c forgerock-login
-
-# Generate a single request
-npx http-forge-codegen -i ./collections -o ./api-clients -r forgerock-login/login-request
-
-# Overwrite existing generated files
-npx http-forge-codegen -i ./collections -o ./api-clients --overwrite
-
-# Generate only type definitions
-npx http-forge-codegen -i ./collections -o ./api-clients --types-only
-
-# Skip barrel file updates for single request/collection generation
-npx http-forge-codegen -i ./collections -o ./api-clients -r forgerock-login/login-request --no-barrel
+http-forge generate --input ./collections --output ./api-clients
+http-forge generate --input ./collections --output ./api-clients --collection forgerock-login
+http-forge generate --input ./collections --output ./api-clients --request forgerock-login/login-request
 ```
 
-### CLI options
+## Detailed Docs
 
-| Flag | Description |
-|------|-------------|
-| `-i, --input <path>` | Input directory containing collection source files (required) |
-| `-o, --output <path>` | Output directory for generated files (required) |
-| `-r, --request <path>` | Generate a single request by path (e.g., `collection/request`) |
-| `-c, --collection <name>` | Generate a single collection |
-| `--overwrite` | Overwrite existing files (default: `false`) |
-| `--types-only` | Generate only TypeScript types without runtime request functions |
-| `--no-barrel` | Skip `index.ts` barrel file generation |
-
-### Programmatic usage
-
-```ts
-import { generateClients, generateCollection, generateSingleRequest } from '@http-forge/codegen';
-
-// Generate all collections
-await generateClients({
-  input: './collections',
-  output: './api-clients',
-  overwrite: true,
-});
-
-// Generate a single collection
-await generateCollection({
-  input: './collections',
-  output: './api-clients',
-  collection: 'forgerock-login',
-});
-
-// Generate a single request
-await generateSingleRequest({
-  input: './collections',
-  output: './api-clients',
-  request: 'forgerock-login/login-request',
-  updateBarrel: false,
-});
-```
-
-### Programmatic option types
-
-| Function | Options Type |
-|----------|-------------|
-| `generateClients(options)` | `GeneratorOptions` |
-| `generateCollection(options)` | `CollectionOptions` |
-| `generateSingleRequest(options)` | `SingleRequestOptions` |
-
-Common option fields:
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `input` | `string` | Collection source directory |
-| `output` | `string` | Generated output directory |
-| `overwrite?` | `boolean` | Whether to overwrite existing files |
-| `typesOnly?` | `boolean` | Emit only type definitions |
-| `updateBarrel?` | `boolean` | Update barrel exports after generating a single collection or request |
-
-## Collection structure
-
-The codegen reads HTTP Forge collection folders. Each request is a directory containing:
-
-```text
-collections/
-└── my-api/
-    └── get-user/
-        ├── request.json         # Method, URL, headers, query params, path params
-        ├── body.json            # Request body (optional, overrides inline body)
-        ├── body.schema.json     # JSON Schema for request body (optional)
-        └── response.schema.json # Response schemas per status code (optional)
-```
-
-### Schema files
-
-**`body.schema.json`** — When present, the codegen generates the request body interface from this JSON Schema instead of inferring types from `body.json` sample data. Supports `$ref`, `oneOf`/`anyOf`/`allOf`, nested objects, and `components` for shared definitions.
-
-**`response.schema.json`** — Defines response types per HTTP status code. Generates per-status interfaces (e.g., `Response200`, `Response404`) and a typed response wrapper with `json(): Promise<PrimaryResponseType>`.
-
-```json
-{
-  "responses": {
-    "200": {
-      "description": "Success",
-      "content": {
-        "application/json": {
-          "schema": {
-            "type": "object",
-            "properties": {
-              "id": { "type": "string" },
-              "name": { "type": "string" }
-            },
-            "required": ["id"]
-          }
-        }
-      }
-    }
-  }
-}
-```
-
-## Generated output
-
-### File structure
-
-```text
-api-clients/
-├── forgerock-login/
-│   ├── login-request.ts
-│   ├── form-submission.ts
-│   ├── user-sessions.ts
-│   └── index.ts
-├── user-api/
-│   └── ...
-└── index.ts
-```
-
-### Generated code example
-
-Each request file contains typed interfaces and an async function:
-
-```ts
-import type { HttpHeaders, BaseRequestContext, BaseApiOptions } from '@http-forge/playwright';
-import type { APIResponse } from '@playwright/test';
-
-// Headers interface (typed metadata when available)
-export interface GetUserHeaders extends HttpHeaders {
-    /** Authorization token — @default "Bearer {{accessToken}}" */
-    'Authorization'?: string;
-}
-
-// Path params interface with constraint-based types
-export interface GetUserPathParams {
-    /** Path parameter: contentType */
-    contentType: 'VOD' | 'PROGRAM';          // enum constraint → union type
-    /** Path parameter: appversion — @pattern T7.[0-9] */
-    appversion: string;                       // regex constraint → string
-    userId: any;                              // no constraint → any
-}
-
-// Query params interface (typed metadata when available)
-export interface GetUserQuery {
-    /** Filter by status — @format enum */
-    status?: 'active' | 'inactive';
-    /** Page number */
-    page?: number;
-    [key: string]: any;
-}
-
-// Body interface (from body.schema.json when available)
-export interface GetUserBody {
-    name: string;
-    email?: string;
-}
-
-// Response interface (from response.schema.json)
-/** Success */
-export interface GetUserResponse200 {
-    id: string;
-    name?: string;
-}
-
-// Typed response wrapper
-export interface GetUserTypedResponse extends APIResponse {
-    json(): Promise<GetUserResponse200>;
-}
-
-// Options interface
-export interface GetUserOptions extends BaseRequestContext<GetUserHeaders>, BaseApiOptions {
-    params: GetUserPathParams;
-    query?: GetUserQuery;
-    body?: GetUserBody;
-}
-
-// Async request function
-export async function getUser(options: GetUserOptions): Promise<GetUserTypedResponse> {
-    // ... URL resolution, header merging, Playwright request
-}
-```
-
-### Type generation priority
-
-| Source | Priority | Description |
-|--------|----------|-------------|
-| `body.schema.json` | Highest | JSON Schema → full interface with required/optional, JSDoc, nested types |
-| `body.json` | Fallback | Sample data → inferred interface with `any` types and `@default` comments |
-| Inline body in `request.json` | Lowest | Same as `body.json` |
-
-### Path parameter constraints
-
-Path params extracted from URL patterns like `:name(constraint)?` are turned into TypeScript types. Regex detection applies both to URL constraints **and** `enum` values in typed path param metadata — any value containing regex metacharacters (`. [ ] * + ? \ ^ $ { } ( )`) maps to `string` instead of a literal type.
-
-| URL pattern | Constraint | Generated type |
-|-------------|-----------|----------------|
-| `:contentType(VOD\|PROGRAM)` | `VOD\|PROGRAM` | `'VOD' \| 'PROGRAM'` |
-| `:provider(TELUS)` | `TELUS` | `'TELUS'` |
-| `:appversion(T7.[0-9])` | `T7.[0-9]` | `string` (with `@pattern` JSDoc) |
-| `:userId` | none | `any` |
-| `:sessionId?` | none | `any` (optional) |
-
-When typed path params provide an `enum` array (e.g., `"enum": ["T7.[0-9]"]`), the same regex detection applies — regex-like values produce `string`, while plain values like `["VOD", "PROGRAM"]` produce `'VOD' | 'PROGRAM'`.
-
-### Body type support
-
-| Body type | Generated interface | Runtime handling |
-|-----------|-------------------|-----------------|
-| `json` / `raw` (json format) | Object interface or schema | `data:` with `env.resolveObject()` |
-| `x-www-form-urlencoded` | Interface from field array | `form:` |
-| `form-data` | Interface from field array | `multipart:` (files) or `form:` (text) |
-| `graphql` | `{ query, variables, operationName }` | Merges defaults, resolves query |
-| `binary` | `Buffer \| string` | Base64 → Buffer conversion |
-| `raw` (text/xml/html/js) | `string` type alias | `data:` with `env.resolve()` |
-
-## Exported types
-
-The package exports the following types for programmatic use:
-
-```ts
-import type {
-  GeneratorOptions,
-  SingleRequestOptions,
-  CollectionOptions,
-  CollectionInfo,
-  RequestInfo,
-  TypedParam,
-} from '@http-forge/codegen';
-```
-
-## Development
-
-```bash
-npm install
-npm run build
-npm test
-```
+- Full CLI reference and all options: [docs/codegen-guide.md](docs/codegen-guide.md)
+- Integration guide across HTTP Forge family: [docs/codegen-guide.md#integration-with-http-forge-family](docs/codegen-guide.md#integration-with-http-forge-family)
+- Migration from `http-forge-codegen` to `http-forge generate`: [docs/codegen-guide.md#migration-from-http-forge-codegen](docs/codegen-guide.md#migration-from-http-forge-codegen)
 
 ## License
 
