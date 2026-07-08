@@ -1,13 +1,26 @@
+<div align="center">
+
+<a href="https://marketplace.visualstudio.com/items?itemName=henry-huang.http-forge">
+<img src="https://raw.githubusercontent.com/hsl1230/http-forge/main/resources/http-forge-icon.png" alt="HTTP Forge" width="120"/>
+</a>
+
+</div>
+
 # @http-forge/codegen
 
 [![npm version](https://img.shields.io/npm/v/%40http-forge%2Fcodegen)](https://www.npmjs.com/package/@http-forge/codegen)
 [![npm downloads](https://img.shields.io/npm/dm/%40http-forge%2Fcodegen)](https://www.npmjs.com/package/@http-forge/codegen)
+[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/henry-huang.http-forge?label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=henry-huang.http-forge)
 [![license](https://img.shields.io/npm/l/%40http-forge%2Fcodegen)](LICENSE)
 [![node](https://img.shields.io/node/v/%40http-forge%2Fcodegen)](https://www.npmjs.com/package/@http-forge/codegen)
 
 **Generate typed TypeScript API clients from HTTP Forge collections.**
 
-Turn your HTTP Forge workspace requests into fully-typed, Playwright-ready API client functions — with schema-first types, path param constraints, and barrel exports.
+Turn your HTTP Forge workspace requests into fully-typed, Playwright-ready API client functions with schema-first types, path param constraints, and barrel exports.
+
+Built for HTTP Forge workflows from import to execution: bring in Postman/OpenAPI definitions, then generate production-ready TypeScript clients for tests and apps.
+
+Want the full interactive [HTTP Forge](https://marketplace.visualstudio.com/items?itemName=henry-huang.http-forge) experience? Use the VS Code extension: [HTTP Forge](https://marketplace.visualstudio.com/items?itemName=henry-huang.http-forge).
 
 ## Who It Is For
 
@@ -24,6 +37,26 @@ Turn your HTTP Forge workspace requests into fully-typed, Playwright-ready API c
 - Works alongside `@http-forge/playwright` runtime — generated clients depend on it.
 - Generate all, one collection, or one request.
 
+## Postman To Typed Client Workflow
+
+Use HTTP Forge to convert existing Postman assets into typed client code quickly:
+- Import Postman collection export with [HTTP Forge CLI](https://github.com/hsl1230/http-forge.cli#readme).
+- Import Postman environment export.
+- Run and validate imported APIs in HTTP Forge.
+- Generate typed TypeScript clients with `@http-forge/codegen`.
+
+```bash
+# Import Postman collection and environment via CLI
+http-forge import collection --postman ./MyApi.postman_collection.json
+http-forge import env --postman ./MyEnv.postman_environment.json --env staging --overwrite
+
+# Run imported collection
+http-forge run collection "MyApi" --env staging --exit-code
+
+# Generate typed clients from resulting workspace collections
+npx http-forge-codegen --input ./collections --output ./api-clients
+```
+
 ## How It Fits In The HTTP Forge Family
 
 | Component | Role |
@@ -32,7 +65,7 @@ Turn your HTTP Forge workspace requests into fully-typed, Playwright-ready API c
 | `@http-forge/core` | Shared execution and Postman-compatible runtime behavior |
 | `@http-forge/codegen` | Generates typed TypeScript API client functions from your workspace |
 | `@http-forge/playwright` | Runtime + shared types used by generated Playwright clients |
-| HTTP Forge CLI | Headless collection/suite runs and reporting for CI/CD |
+| [HTTP Forge CLI](https://github.com/hsl1230/http-forge.cli#readme) | Headless collection/suite runs and reporting for CI/CD |
 
 `@http-forge/codegen` is the bridge between your HTTP Forge workspace and your Playwright test code. Generated clients import from `@http-forge/playwright` and work directly with the Playwright test runner.
 
@@ -82,11 +115,13 @@ test('get user', async ({ request }) => {
 # Standalone package
 npm install @http-forge/codegen
 
-# Optional: use via HTTP Forge CLI (single global entry point)
+# Optional: use via CLI (single global entry point)
 npm install --global @http-forge/cli
 ```
 
-### Use Through HTTP Forge CLI
+To manage requests visually, import from Postman/OpenAPI, and run suites with reporting, install the VS Code extension: [HTTP Forge](https://marketplace.visualstudio.com/items?itemName=henry-huang.http-forge).
+
+### Use Through [HTTP Forge CLI](https://github.com/hsl1230/http-forge.cli#readme)
 
 If you prefer one global tool entry point, run code generation through CLI:
 
@@ -101,6 +136,7 @@ http-forge generate --input ./collections --output ./api-clients --request forge
 - Full CLI reference and all options: [docs/codegen-guide.md](docs/codegen-guide.md)
 - Integration guide across HTTP Forge family: [docs/codegen-guide.md#integration-with-http-forge-family](docs/codegen-guide.md#integration-with-http-forge-family)
 - Migration from `http-forge-codegen` to `http-forge generate`: [docs/codegen-guide.md#migration-from-http-forge-codegen](docs/codegen-guide.md#migration-from-http-forge-codegen)
+- Marketplace extension: [HTTP Forge](https://marketplace.visualstudio.com/items?itemName=henry-huang.http-forge)
 
 ## License
 

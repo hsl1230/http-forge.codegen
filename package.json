@@ -1,6 +1,6 @@
 {
   "name": "@http-forge/codegen",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "HTTP Forge Code Generator - Generate typed API clients from collections",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
